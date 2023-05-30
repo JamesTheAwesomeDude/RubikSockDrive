@@ -37,7 +37,7 @@ def data2bag_wizard(data, *, input=input):
 	k = len(scrambles)
 	for i, scramble in enumerate(scrambles):
 		solve = TODO_SOLVE(scramble)
-		scramble_instructions = -solve
+		scramble_instructions = -solve  # this depends on the Solution interface providing .__neg__()
 		input(f"Scramble Cube \x23{i+1}/{k}:\n{scramble_instructions}\nPress Enter once the cube has been solved.")  # str NOT repr since this is end-user-facing
 		p
 
