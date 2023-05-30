@@ -1,15 +1,18 @@
 
 # TODO figure out why these don't work as relative imports despite __init__.py existing
-from macaulay import (i2multiset as _i2multiset, multiset2i as _multiset2i,)
+from macaulay import (
+	integer_to_multiset as _integer_to_multiset,
+	multiset_to_integer as _multiset_to_integer,
+	multicomb as _multicomb)
 from _util import (
 	last_qualified as _last_qualified,
-	ez_generator_interface as _ez_generator_interface,
 	crunch as _crunch,
 	uncrunch as _uncrunch)
 
 from rubik.solve import Solver as _pglass_Solver
 
 from math import prod as _prod
+from itertools import count as _count
 import re
 import logging
 
@@ -21,10 +24,11 @@ def data2bag(data):
 	if isinstance(data, str):
 		logging.warning("AUTO-CASTING STR TO DEC6 (25%-33% MORE STORAGE). OUTPUT WILL NEED TO BE DECODED WITH uncrunch().")
 		logging.warning("IF YOU MEANT TO USE UTF-8 OR SOMETHING, ENCODE IT FIRST.")
-		data = crunch(str.upper())
+		data = _crunch(data.upper())
+		data = int.to_bytes(data, -(-int.bit_length(data)//8), 'big')
 	i = int.from_bytes(data, 'big')  # TODO verify which byte order allows showing partially decoded files live
-	cubes_needed = next(k for k in count(1) if multicomb(RUBIKS_BASE, k) > i)
-	return _i2multiset(i, k=cubes_needed, n=RUBIKS_BASE.order)
+	cubes_needed = next(k for k in _count(1) if _multicomb(RUBIKS_BASE.order, k) > i)
+	return _integer_to_multiset(i, k=cubes_needed, n=RUBIKS_BASE.order)
 
 
 def data2bag_wizard(data, *, input=input):
@@ -39,7 +43,7 @@ def data2bag_wizard(data, *, input=input):
 
 
 def bag2data(bag, *, is_dec6=False):
-	i = _multiset2i(bag)
+	i = _multiset_to_integer(bag, n=RUBIKS_BASE.order)
 	if is_dec6:
 		data = _uncrunch(i).rstrip().encode('ascii')
 	else:
