@@ -1,13 +1,10 @@
 
 # TODO figure out why these don't work as relative imports despite __init__.py existing
-from macaulay import (
-	integer_to_multiset as _integer_to_multiset,
-	multiset_to_integer as _multiset_to_integer,
-	multicomb as _multicomb)
+from macaulay import integer_to_varmultiset, varmultiset_to_integer
 from _util import (
-	last_qualified as _last_qualified,
-	crunch as _crunch,
-	uncrunch as _uncrunch)
+	Multiset,
+	rank50 as _rank50, unrank50 as _unrank50,
+	rank_octetstring as _rank_octetstring, unrank_octetstring as _unrank_octetstring)
 
 from rubik.solve import Solver as _pglass_Solver
 
@@ -22,24 +19,27 @@ __all__ = ["data2bag", "bag2data", "data2bag_wizard", "bag2data_wizard", "Cube",
 
 def data2bag(data):
 	if isinstance(data, str):
-		logging.warning("AUTO-CASTING STR TO DEC6 (25%-33% MORE STORAGE). OUTPUT WILL NEED TO BE DECODED WITH uncrunch().")
-		logging.warning("IF YOU MEANT TO USE UTF-8 OR SOMETHING, ENCODE IT FIRST.")
-		data = _crunch(data.upper())
-		data = int.to_bytes(data, -(-int.bit_length(data)//8), 'big')
-	i = int.from_bytes(data, 'big')  # TODO verify which byte order allows showing partially decoded files live
-	cubes_needed = next(k for k in _count(1) if _multicomb(RUBIKS_BASE.order, k) > i)
-	return _integer_to_multiset(i, k=cubes_needed, n=RUBIKS_BASE.order)
+		logging.warning("AUTO-CASTING STR TO RADIX-50 (??%-??% MORE STORAGE FOR VERY SIMPLE MESSAGES). OUTPUT WILL NEED TO BE DECODED WITH unrank50().")
+		logging.warning("IF YOU MEANT TO USE UTF-8 OR SOMETHING, ENCODE IT FIRST INSTEAD OF PASSING str INTO data2bag().")
+		data = _rank50(data)
+	elif isinstance(data, bytes):
+		data = _rank_octetstring(data)
+	representatives = integer_to_varmultiset(data, n=RUBIKS_BASE.order)
+	return Multiset(map(Cube._from_int, representatives))
 
 
 def data2bag_wizard(data, *, input=input):
-	bag = data2bag(data)
-	scrambles = [i2cube(elem) for elem in bag]
+	scrambles = data2bag(data)
 	k = len(scrambles)
 	for i, scramble in enumerate(scrambles):
 		solve = TODO_SOLVE(scramble)
 		scramble_instructions = -solve  # this depends on the Solution interface providing .__neg__()
-		input(f"Scramble Cube \x23{i+1}/{k}:\n{scramble_instructions}\nPress Enter once the cube has been solved.")  # str NOT repr since this is end-user-facing
-		p
+		yield f"Scramble Cube \x23{i+1}/{k}:\n{scramble_instructions}\nPress Enter once the cube has been solved."  # str NOT repr since this is end-user-facing
+	scramble_check = Multiset()
+	for i, scramble in enumerate(scrambles):
+		scramble_check.append(yield from _cube_input_wizard("Cube \x23{i+1}/{k}", input=input))
+	if scramble_check != scrambles:
+		raise RuntimeError(f"verification failed: {scramble_check!r} != {scrambles!r}")
 
 
 def bag2data(bag, *, is_dec6=False):
@@ -69,13 +69,13 @@ def _cube_input_wizard(name="the cube", *, input=input):
 
 
 def bag2data_wizard(*, input=input):
-	is_dec6 = {'': False, '6': True}[input('Were you expecting a 6-BIT TEXT message?\nIf so, type "6" and press Enter. If not, just press Enter.\n> ')]
+	is_a50 = {'': False, '50': True}[input('Were you expecting a RADIX-50 TEXT message?\nIf so, type "50" (without the quotes) and press Enter. If not, just press Enter.\n> ')]
 	k = int(input("How many cubes do you have?\n> "))
 	bag = []
 	for i in range(k):
 		input_cube = _cube_input_wizard(name=f"Cube \x23{i+1}", input=input)
 		bag.append(cube2i(input_cube))
-	return bag2data(bag, is_dec6=is_dec6)
+	return bag2data(bag, is_a50=is_a50)
 
 
 class Cube:
