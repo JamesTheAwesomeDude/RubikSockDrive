@@ -1,7 +1,8 @@
 from math import comb as _comb
 from itertools import count as _count
 
-from _util import Multiset, search_maxsatisfying as _search_maxsatisfying, fit_to_epoch as _fit_to_epoch
+from . import Multiset
+from ._util import search_maxsatisfying as _search_maxsatisfying, fit_to_epoch as _fit_to_epoch
 
 
 def multicomb(n, k):

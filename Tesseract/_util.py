@@ -6,9 +6,6 @@ from collections import defaultdict as _defaultdict
 from math import isqrt as _isqrt
 from sys import maxsize as _sys_maxsize
 
-_N = 43252003274489856000
-
-
 # assorted utilities
 
 def fit_to_epoch(i, epochs):

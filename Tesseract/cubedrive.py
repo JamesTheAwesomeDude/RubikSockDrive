@@ -1,8 +1,7 @@
 
-# TODO figure out why these don't work as relative imports despite __init__.py existing
-from macaulay import integer_to_varmultiset, varmultiset_to_integer
-from _util import (
-	Multiset,
+from . import Multiset
+from .macaulay import integer_to_varmultiset, varmultiset_to_integer
+from ._util import (
 	rank50 as _rank50, unrank50 as _unrank50,
 	rank_octetstring as _rank_octetstring, unrank_octetstring as _unrank_octetstring)
 
@@ -15,6 +14,9 @@ import logging
 
 
 __all__ = ["data2bag", "bag2data", "data2bag_wizard", "bag2data_wizard", "Cube", "RUBIKS_BASE"]
+
+
+_N = 43252003274489856000
 
 
 def data2bag(data):
