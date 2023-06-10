@@ -37,7 +37,8 @@ def data2bag_wizard(data, *, input=input):
 		yield f"Scramble Cube \x23{i+1}/{k}:\n{scramble_instructions}\nPress Enter once the cube has been solved."  # str NOT repr since this is end-user-facing
 	scramble_check = Multiset()
 	for i, scramble in enumerate(scrambles):
-		scramble_check.append(yield from _cube_input_wizard("Cube \x23{i+1}/{k}", input=input))
+		cube = yield from _cube_input_wizard("Cube \x23{i+1}/{k}", input=input)
+		scramble_check.append(cube)
 	if scramble_check != scrambles:
 		raise RuntimeError(f"verification failed: {scramble_check!r} != {scrambles!r}")
 
