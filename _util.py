@@ -254,4 +254,4 @@ def rank_octetstring(s):
 	return string_rank(s, 2**8, ord=int)
 
 def unrank_octetstring(i):
-	return string_rank(s, 2**8, t=bytes)
+	return string_unrank(i, 2**8, t=bytes)

@@ -19,11 +19,13 @@ __all__ = ["data2bag", "bag2data", "data2bag_wizard", "bag2data_wizard", "Cube",
 
 def data2bag(data):
 	if isinstance(data, str):
-		logging.warning("AUTO-CASTING STR TO RADIX-50 (??%-??% MORE STORAGE FOR VERY SIMPLE MESSAGES). OUTPUT WILL NEED TO BE DECODED WITH unrank50().")
+		logging.warning("AUTO-CASTING STR TO RADIX-50 (30%-50% MORE STORAGE FOR VERY SIMPLE MESSAGES). OUTPUT WILL NEED TO BE DECODED WITH unrank50().")
 		logging.warning("IF YOU MEANT TO USE UTF-8 OR SOMETHING, ENCODE IT FIRST INSTEAD OF PASSING str INTO data2bag().")
 		data = _rank50(data)
 	elif isinstance(data, bytes):
 		data = _rank_octetstring(data)
+	elif hasattr(data, 'encode'):
+		data = _rank_octetstring(data.encode())
 	representatives = integer_to_varmultiset(data, n=RUBIKS_BASE.order)
 	return Multiset(map(Cube._from_int, representatives))
 

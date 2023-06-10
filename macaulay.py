@@ -51,6 +51,10 @@ def varcombination_to_integer(i, n):
 
 def integer_to_combination(i, k):
 	"https://en.wikipedia.org/wiki/Combinatorial_number_system#Finding_the_k-combination_for_a_given_number"
+	if i < 0:
+		raise ValueError(f"can't represent {i} as a {k}-combination (i too small)")
+	if k < 1 and i > 0:
+		raise ValueError(f"can't represent {i} as a {k}-combination (k too small)")
 	remainder = int(i)
 	s = set()
 	for j in range(k, 0, -1):  # [k, k-1, ..., 1]
@@ -58,7 +62,7 @@ def integer_to_combination(i, k):
 		assert elem not in s
 		s.add(elem)
 		remainder -= _comb(elem, j)
-	assert remainder == 0
+	assert remainder == 0, {'i': i, 'k': k}
 	return s
 
 def combination_to_integer(s):
