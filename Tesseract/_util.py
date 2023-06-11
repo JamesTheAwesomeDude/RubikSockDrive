@@ -95,6 +95,9 @@ def _op_symmdiff(a, b):
 def _op_softsub(a, b):
 	return max(0, a - b)
 
+def _op_replace(a, b):
+	return b
+
 class Multiset:
 	__slots__ = ('__ddict', )
 	def __init__(self, collection_or_mapping=None):
@@ -145,7 +148,9 @@ class Multiset:
 				raise TypeError(type(other))
 		return not self._get_common_support(other)
 	def issubset(self, other, *, proper=False):
-		"Test whether every element in the set is at least as multiplicitous in *other*."
+		"""Test whether every element in the set is at least as multiplicitous in *other*.
+
+		https://en.wikipedia.org/wiki/Multiset#:~:text=Inclusion"""
 		if not isinstance(other, Multiset):
 			if isinstance(other, (_Collection)):
 				other = Multiset(other)
@@ -153,7 +158,9 @@ class Multiset:
 				raise TypeError(type(other))
 		return all(self.count(elem) <= other.count(elem) for elem in self._support) and ((not proper) or (self != other))
 	def issuperset(self, other, *, proper=False):
-		"Test whether every element in *other* is at least as multiplicitous in the set."
+		"""Test whether every element in *other* is at least as multiplicitous in the set.
+
+		https://en.wikipedia.org/wiki/Multiset#:~:text=Inclusion"""
 		if not isinstance(other, Multiset):
 			if isinstance(other, (_Collection)):
 				other = Multiset(other)
@@ -172,17 +179,24 @@ class Multiset:
 		result.update(*others)
 		return result
 	def intersection(self, *others):
-		"Return a new set with element multiplicities common to the set and all others."
+		"""Return a new set with element multiplicities common to the set and all others.
+
+		https://en.wikipedia.org/wiki/Multiset#:~:text=Intersection"""
 		result = self.copy()
 		result.intersection_update(*others)
 		return result
 	def difference(self, *others):
-		"Return a new set with element multiplicities in the set that exceed the sum of the others."
+		"""Return a new set with element multiplicities in the set that exceed the sum of the others.
+
+		https://en.wikipedia.org/wiki/Multiset#:~:text=Difference"""
 		result = self.copy()
 		result.difference_update(*others)
 		return result
 	def symmetric_difference(self, other):
-		"Return a new set with element multiplicities only of which one set exceeds another."
+		"""Return a new set with element multiplicities only of which one set exceeds another.
+
+		Similar to https://en.wikipedia.org/wiki/Multiset#:~:text=Difference
+		except that abs(m1 - m2) is used instead of max(m1 - m2, 0)"""
 		result = self.copy()
 		result.symmetric_difference_update(other)
 		return result
@@ -200,14 +214,20 @@ class Multiset:
 		for other in others:
 			self.__include(other)
 	def intersection_update(self, *others):
-		"Update the set, keeping only element multiplicities at least found in it and all others."
+		"""Update the set, keeping only element multiplicities at least found in it and all others.
+
+		https://en.wikipedia.org/wiki/Multiset#:~:text=Intersection"""
 		for other in others:
 			self.__revise(other.count, op=min)
 	def difference_update(self, *others):
+		"https://en.wikipedia.org/wiki/Multiset#:~:text=Difference"
 		for other in others:
 			self.__include(other, op=_op_softsub)
 	def symmetric_difference_update(self, *others):
-		"Update the set, keeping only element multiplicities of which one set exceeds another."
+		"""Update the set, keeping only element multiplicities of which one set exceeds another.
+
+		Similar to https://en.wikipedia.org/wiki/Multiset#:~:text=Difference
+		except that abs(m1 - m2) is used instead of max(m1 - m2, 0)"""
 		for other in others:
 			self.__include(other, op=_op_symmdiff)
 	def add(self, elem):
@@ -236,7 +256,7 @@ class Multiset:
 			raise KeyError('pop from an empty Multiset') from None
 	def clear(self):
 		"Remove all elements from the set."
-		self.__init__()
+		self.__revise(lambda _: 0, op=_op_replace)
 
 	# Internal Methods
 	def __include(self, obj, *, op=max):
@@ -245,21 +265,6 @@ class Multiset:
 	def __revise(self, func, *, op):
 		for elem in list(self._support):
 			self.__addcount(elem, func(elem), op=op)
-	@staticmethod
-	def __to_multiplicity_items(obj):
-		if isinstance(obj, _Mapping):
-			# e.g. collections.Counter
-			return obj.items()
-		elif isinstance(obj, _ItemsView):
-			# e.g. collections.Counter.items()
-			return obj
-		elif isinstance(obj, Multiset):
-			# ...
-			return obj._multiplicity_items
-		else:
-			# e.g. set, list, frozenset, tuple
-			assert isinstance(obj, _Collection)
-			return zip(obj, _repeat(1))
 	def __getcount(self, elem):
 		return self.__ddict[elem]
 	def __setcount(self, elem, count):
@@ -285,6 +290,21 @@ class Multiset:
 	@property
 	def _multiplicity_items(self):
 		return self.__ddict.items()
+	@staticmethod
+	def __to_multiplicity_items(obj):
+		if isinstance(obj, _Mapping):
+			# e.g. collections.Counter
+			return obj.items()
+		elif isinstance(obj, _ItemsView):
+			# e.g. collections.Counter.items()
+			return obj
+		elif isinstance(obj, Multiset):
+			# ...
+			return obj._multiplicity_items
+		else:
+			# e.g. set, list, frozenset, tuple
+			assert isinstance(obj, _Collection)
+			return zip(obj, _repeat(1))
 
 	# Efficient type-recast methods
 	def _aslist(self, sortkey=lambda x: (id(type(x)), x)):
