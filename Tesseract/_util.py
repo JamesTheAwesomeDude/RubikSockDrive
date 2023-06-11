@@ -118,7 +118,7 @@ class Multiset:
 	def __repr__(self):
 		if _isqrt(len(self)) > len(self._support):
 			# Alternate compact representation for sets with EXCESSIVE duplication
-			# (when the cardinality is greater than the SQUARE of the number of unique elements)
+			# (when the set's cardinality is greater than the SQUARE of its support's)
 			return f"{self.__class__.__name__}({self._asdict()!r})"
 		return f"{self.__class__.__name__}({self._aslist()!r})"
 	def __str__(self):
