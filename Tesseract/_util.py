@@ -1,10 +1,12 @@
-from itertools import count as _count
-from functools import reduce as _reduce
-from itertools import repeat as _repeat, starmap as _starmap, chain as _chain
-from collections.abc import Callable as _Callable, Mapping as _Mapping, Collection as _Collection
+from functools import reduce as _reduce, wraps as _wraps
+from itertools import repeat as _repeat, starmap as _starmap, chain as _chain, count as _count
+from collections.abc import Callable as _Callable, Mapping as _Mapping, Collection as _Collection, Iterable as _Iterable, Set as _Set, MutableSet as _MutableSet, ItemsView as _ItemsView, Sequence as _Sequence
 from collections import defaultdict as _defaultdict
 from math import isqrt as _isqrt
+from operator import add as _add, sub as _sub
 from sys import maxsize as _sys_maxsize
+import logging as _logging
+
 
 # assorted utilities
 
@@ -87,48 +89,177 @@ def last_qualified(predicate, iterable, /, return_if_exhausted=True):
 
 # Multiset class
 
+def _op_symmdiff(a, b):
+	return abs(a - b)
+
+def _op_softsub(a, b):
+	return max(0, a - b)
+
 class Multiset:
 	__slots__ = ('__ddict', )
-	# Public Methods
-	def __init__(self, collection_or_mapping):
+	def __init__(self, collection_or_mapping=None):
 		self.__ddict = _defaultdict(int)
-		if isinstance(collection_or_mapping, _Mapping):
-			items = collection_or_mapping.items()
-		else:
-			items = zip(collection_or_mapping, _repeat(1))
-		for elem, count in items:
-			self.__addcount(elem, count)
-	def __len__(self):
-		return sum(self._quantities())
-	def __contains__(self, elem):
-		return self.count(elem) > 0
+		if collection_or_mapping is not None:
+			self.__include(collection_or_mapping, op=_add)
+
+	# Public Misc. methods
 	def __iter__(self):
-		yield from _chain.from_iterable(_starmap(_repeat, self._items()))
+		# guaranteed: Multiset(list(Multiset(x))) == Multiset(x)
+		yield from _chain.from_iterable(_starmap(_repeat, self._multiplicity_items))
+	def count(self, elem):
+		# like list.count() but O(1)
+		return self.__getcount(elem)
+	def extend(self, other):
+		# like list.extend()
+		self.__include(other, op=_add)
 	def __repr__(self):
-		if _isqrt(len(self)) > len(self._elements()):
-			# Alternate representation for sets with EXCESSIVE duplication
+		if _isqrt(len(self)) > len(self._support):
+			# Alternate compact representation for sets with EXCESSIVE duplication
+			# (when the cardinality is greater than the SQUARE of the number of unique elements)
 			return f"{self.__class__.__name__}({self._asdict()!r})"
 		return f"{self.__class__.__name__}({self._aslist()!r})"
 	def __str__(self):
+		# simplified representation if cast to string
 		return str(self._aslist())
-	def count(self, elem):
-		return self.__getcount(elem)
+
+	# Public Set-like Methods
+	def __len__(self):
+		# TOTAL number of elements, including repeats.
+		# i.e., len(list(x)) == len(Multiset(x))
+		# if you want the number of UNIQUE elements, see len(ms._elements).
+		return sum(self._multiplicities)
+	def __bool__(self):
+		# bool-cast works as expected for a a collection
+		return any(self._multiplicities)
+	def __contains__(self, elem):
+		# "in" operator works as expected for a collection
+		if isinstance(elem, _MutableSet):
+			elem = frozenset(elem)
+		return self.count(elem) > 0
+	def isdisjoint(self, other):
+		"Return `True` if the set has no elements in common with *other*. Sets are disjoint if and only if their intersection is the empty set."
+		if not isinstance(other, Multiset):
+			if isinstance(other, (_Collection)):
+				other = Multiset(other)
+			else:
+				raise TypeError(type(other))
+		return not self._get_common_support(other)
+	def issubset(self, other, *, proper=False):
+		"Test whether every element in the set is at least as multiplicitous in *other*."
+		if not isinstance(other, Multiset):
+			if isinstance(other, (_Collection)):
+				other = Multiset(other)
+			else:
+				raise TypeError(type(other))
+		return all(self.count(elem) <= other.count(elem) for elem in self._support) and ((not proper) or (self != other))
+	def issuperset(self, other, *, proper=False):
+		"Test whether every element in *other* is at least as multiplicitous in the set."
+		if not isinstance(other, Multiset):
+			if isinstance(other, (_Collection)):
+				other = Multiset(other)
+			else:
+				raise TypeError(type(other))
+		return all(self.count(elem) >= other.count(elem) for elem in other._support) and ((not proper) or (self != other))
+	def union(self, *others):
+		"""Return a new set with element multiplicity unioned from the set and all others.
+
+		NOTE that Multiset("aab").union("b") == Multiset("aab")
+		https://en.wikipedia.org/wiki/Multiset#:~:text=Union
+
+		If you want Multiset("aab").some_operation("b") == Multiset("aabb"),
+		use operator.add(), or Multiset.extend() if mutating."""
+		result = self.copy()
+		result.update(*others)
+		return result
+	def intersection(self, *others):
+		"Return a new set with element multiplicities common to the set and all others."
+		result = self.copy()
+		result.intersection_update(*others)
+		return result
+	def difference(self, *others):
+		"Return a new set with element multiplicities in the set that exceed the sum of the others."
+		result = self.copy()
+		result.difference_update(*others)
+		return result
+	def symmetric_difference(self, other):
+		"Return a new set with element multiplicities only of which one set exceeds another."
+		result = self.copy()
+		result.symmetric_difference_update(other)
+		return result
+	def copy(self):
+		"Return a shallow copy of the set."
+		return Multiset(self)
+	def update(self, *others):
+		"""Update the set with element multiplicity unioned from the set and all others.
+
+		NOTE that Multiset("aab").update("bc") results in Multiset("aabc")
+		https://en.wikipedia.org/wiki/Multiset#:~:text=Union
+
+		If you want Multiset("aab").some_operation("bc") resulting in Multiset("aabbc"),
+		use operator.iadd or Multiset.extend()."""
+		for other in others:
+			self.__include(other)
+	def intersection_update(self, *others):
+		"Update the set, keeping only element multiplicities at least found in it and all others."
+		for other in others:
+			self.__revise(other.count, op=min)
+	def difference_update(self, *others):
+		for other in others:
+			self.__include(other, op=_op_softsub)
+	def symmetric_difference_update(self, *others):
+		"Update the set, keeping only element multiplicities of which one set exceeds another."
+		for other in others:
+			self.__include(other, op=_op_symmdiff)
 	def add(self, elem):
+		"Add single element *elem* to the set."
 		self.__addcount(elem, 1)
 	def remove(self, elem):
+		"Remove single element *elem* from the set. Raises `KeyError` if *elem* is not present in the set."
+		if isinstance(elem, _MutableSet):
+			elem = frozenset(elem)
 		try:
-			self__subcount(elem, 1, permissive=False)
+			self__addcount(elem, -1)
 		except ValueError:
 			raise KeyError(elem) from None
+	def discard(self, elem):
+		"Completely remove element *elem* from the set if it is present."
+		if isinstance(elem, _MutableSet):
+			elem = frozenset(elem)
+		self.__setcount(elem, 0)
 	def pop(self):
+		"Remove and return an arbitrary element from the set. Raises `KeyError` if the set is empty."
 		try:
-			elem = next(iter(self._elements()))
+			elem = next(iter(self._support))
 			self.remove(elem)
 			return elem
 		except StopIteration:
 			raise KeyError('pop from an empty Multiset') from None
+	def clear(self):
+		"Remove all elements from the set."
+		self.__init__()
 
 	# Internal Methods
+	def __include(self, obj, *, op=max):
+		for elem, multiplicity in Multiset.__to_multiplicity_items(obj):
+			self.__addcount(elem, multiplicity, op=op)
+	def __revise(self, func, *, op):
+		for elem in list(self._support):
+			self.__addcount(elem, func(elem), op=op)
+	@staticmethod
+	def __to_multiplicity_items(obj):
+		if isinstance(obj, _Mapping):
+			# e.g. collections.Counter
+			return obj.items()
+		elif isinstance(obj, _ItemsView):
+			# e.g. collections.Counter.items()
+			return obj
+		elif isinstance(obj, Multiset):
+			# ...
+			return obj._multiplicity_items
+		else:
+			# e.g. set, list, frozenset, tuple
+			assert isinstance(obj, _Collection)
+			return zip(obj, _repeat(1))
 	def __getcount(self, elem):
 		return self.__ddict[elem]
 	def __setcount(self, elem, count):
@@ -138,71 +269,150 @@ class Multiset:
 			del self.__ddict[elem]
 		else:
 			raise ValueError({elem: count})
-	def __addcount(self, elem, count):
-		newcount = self.__getcount(elem) + count
-		if not count >= 0:
-			raise ValueError({elem: count})
+	def __addcount(self, elem, count, *, op=_add):
+		newcount = op(self.__getcount(elem), count)
 		self.__setcount(elem, newcount)
-	def __subcount(self, elem, count, permissive=False):
-		newcount = self.__getcount(elem) - count
-		if not newcount >= 0:
-			if permissive:
-				newcount = 0
-			else:
-				raise ValueError({elem: oldcount - count})
-		self.__setcount(elem, newcount)
-	def _elements(self):
-		"Unique elements"
+	@property
+	def _support(self):
 		return self.__ddict.keys()
-	def _quantities(self):
-		"Components of len()"
+	def _get_joint_support(self, other):
+		return self._support | other._support
+	def _get_common_support(self, other):
+		return self._support ^ other._support
+	@property
+	def _multiplicities(self):
 		return self.__ddict.values()
-	def _items(self):
+	@property
+	def _multiplicity_items(self):
 		return self.__ddict.items()
-	def _aslist(self):
+
+	# Efficient type-recast methods
+	def _aslist(self, sortkey=lambda x: (id(type(x)), x)):
+		"list, of all elements, sorted iff possible."
 		try:
-			return sorted(self, key=lambda x: (id(type(x)), x))
+			return sorted(self, key=sortkey)
 		except (TypeError, AttributeError):
 			return list(self)
 	def _asdict(self):
-		return dict(self.__ddict)
+		"Mapping from all present elements to their counts"
+		return dict(self._multiplicity_items)
+	def _asset(self):
+		"unique elements"
+		return set(self._support)
 
 	# Operator Methods
 	def __eq__(self, other):
 		if not isinstance(other, Multiset):
-			if isinstance(other, (_Mapping, _Collection)):
+			if isinstance(other, _Set):
 				other = Multiset(other)
 			else:
 				return NotImplemented
-		return self._asdict() == other._asdict()
-	def __ge__(self, other):
-		if not isinstance(other, Multiset):
-			if isinstance(other, (_Mapping, _Collection)):
-				other = Multiset(other)
-			else:
-				return NotImplemented
-		return all(self.count(elem) >= other.count(elem) for elem in set(self._elements()).union(other._elements()))
-	def __gt__(self, other):
-		if not isinstance(other, Multiset):
-			if isinstance(other, (_Mapping, _Collection)):
-				other = Multiset(other)
-			else:
-				return NotImplemented
-		return self >= other and self != other
+		return self._multiplicity_items == other._multiplicity_items
 	def __le__(self, other):
 		if not isinstance(other, Multiset):
-			if isinstance(other, (_Mapping, _Collection)):
+			if isinstance(other, _Set):
 				other = Multiset(other)
 			else:
 				return NotImplemented
-		return all(self.count(elem) <= other.count(elem) for elem in set(self._elements()).union(other._elements()))
+		return self.issubset(other)
 	def __lt__(self, other):
 		if not isinstance(other, Multiset):
-			if isinstance(other, (_Mapping, _Collection)):
+			if isinstance(other, _Set):
 				other = Multiset(other)
 			else:
 				return NotImplemented
 		return self <= other and self != other
+	def __ge__(self, other):
+		if not isinstance(other, Multiset):
+			if isinstance(other, _Set):
+				other = Multiset(other)
+			else:
+				return NotImplemented
+		return self.issuperset(other)
+	def __gt__(self, other):
+		if not isinstance(other, Multiset):
+			if isinstance(other, _Set):
+				other = Multiset(other)
+			else:
+				return NotImplemented
+		return self >= other and self != other
+	def __add__(self, other):
+		if not isinstance(other, Multiset):
+			if isinstance(other, _Set):
+				other = Multiset(other)
+			else:
+				return NotImplemented
+		result = self.copy()
+		result.extend(other)
+		return result
+	def __iadd__(self, other):
+		if not isinstance(other, Multiset):
+			if isinstance(other, _Set):
+				other = Multiset(other)
+			else:
+				return NotImplemented
+		self.extend(other)
+		return self
+	def __or__(self, other):
+		if not isinstance(other, Multiset):
+			if isinstance(other, _Set):
+				other = Multiset(other)
+			else:
+				return NotImplemented
+		return self.union(other)
+	def __ior__(self, other):
+		if not isinstance(other, Multiset):
+			if isinstance(other, _Set):
+				other = Multiset(other)
+			else:
+				return NotImplemented
+		self.update(other)
+		return self
+	def __and__(self, other):
+		if not isinstance(other, Multiset):
+			if isinstance(other, _Set):
+				other = Multiset(other)
+			else:
+				return NotImplemented
+		return self.intersection(other)
+	def __iand__(self, other):
+		if not isinstance(other, Multiset):
+			if isinstance(other, _Set):
+				other = Multiset(other)
+			else:
+				return NotImplemented
+		self.intersection_update(other)
+		return self
+	def __sub__(self, other):
+		if not isinstance(other, Multiset):
+			if isinstance(other, _Set):
+				other = Multiset(other)
+			else:
+				return NotImplemented
+		return self.difference(other)
+	def __isub__(self, other):
+		if not isinstance(other, Multiset):
+			if isinstance(other, _Set):
+				other = Multiset(other)
+			else:
+				return NotImplemented
+		self.difference_update(other)
+		return self
+	def __xor__(self, other):
+		if not isinstance(other, Multiset):
+			if isinstance(other, _Set):
+				other = Multiset(other)
+			else:
+				return NotImplemented
+		return self.symmetric_difference(other)
+	def __ixor__(self, other):
+		if not isinstance(other, Multiset):
+			if isinstance(other, _Set):
+				other = Multiset(other)
+			else:
+				return NotImplemented
+		self.symmetric_difference_update(other)
+		return self
 
 
 # Bijection between integers and strings
@@ -252,3 +462,44 @@ def rank_octetstring(s):
 
 def unrank_octetstring(i):
 	return string_unrank(i, 2**8, t=bytes)
+
+
+# class to model mixed-radix integers
+
+class MixedBase:
+	def __init__(self, base, repeat=False):
+		if not isinstance(base, _Sequence):
+			if isinstance(base, _Collection):
+				_logging.warning(f"attempt to create MixedBase out of non-ordered {base!r}")
+			else:
+				_logging.warning(f"attempt to create MixedBase out of potentially non-finite {base!r}")
+		if repeat:
+			raise NotImplementedError("non-finite base")
+		self.base = tuple(base)
+	def __repr__(self):
+		return f'{self.__class__.__name__}({list(self.base)!r})'
+	@property
+	def order(self):
+		return _prod(self.base)
+	@property
+	def max(self):
+		return self.order - 1
+	def to_int(self, value):
+		i = 0
+		for b, digit in zip(reversed(self.base), value, strict=True):
+			if not 0 <= digit < b:
+				raise ValueError("digit out of range")
+			i = i * b + digit
+		return i
+	def __int__(self):
+		return self.to_int()
+	def from_int(self, i):
+		value = [...]
+		for b in self.base:
+			i, digit = divmod(i, b)
+			value.append(digit)
+		if i:
+			raise ValueError("integer out of range")
+		value.reverse()
+		return tuple(value)
+

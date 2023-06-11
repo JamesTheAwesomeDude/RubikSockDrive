@@ -3,7 +3,8 @@ from . import Multiset
 from .macaulay import integer_to_varmultiset, varmultiset_to_integer
 from ._util import (
 	rank50 as _rank50, unrank50 as _unrank50,
-	rank_octetstring as _rank_octetstring, unrank_octetstring as _unrank_octetstring)
+	rank_octetstring as _rank_octetstring, unrank_octetstring as _unrank_octetstring,
+	MixedBase as _MixedBase)
 
 from rubik.solve import Solver as _pglass_Solver
 
