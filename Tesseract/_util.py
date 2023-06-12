@@ -24,6 +24,55 @@ def fit_to_epoch(i, epochs):
 	return epoch_index, epoch_offset
 
 
+def ez_generator_interface(g):
+	"""Handy wrapper for generator-driven program flows.
+
+	Example usage:
+
+	def g(questions=[("What's 3 + 3?", 6), ("What's 9 + 10?", 19)]):
+		"Example generator function that yields queries expecting a reply"
+		for question, correct_answer in questions:
+			answer = yield question  # <- KEY LINE
+			if int(answer) != correct_answer:
+				raise ValueError("STUPID")
+
+	for query, send in _ez_generator_interface(g()):
+		prompt = '{}\\n> '.format(query)
+		response = input(prompt)
+		send(response)
+	"""
+	x = None; del x  # if -god forbid- there's a logic error in this code, an undefined variable error is appropriate
+	awaiting_input = False
+	stop_exc = None
+	def send(value):
+		nonlocal x, awaiting_input, stop_exc
+		if not awaiting_input:
+			raise TypeError("attempt to send() more than once in a loop")
+		awaiting_input = False
+		try:
+			x = g.send(value)
+		except StopIteration as e:
+			stop_exc = e
+	try:
+		x = next(g)
+	except StopIteration as e:
+		# handle empty generator
+		return e.value
+	awaiting_input = True
+	yield x, send
+	while stop_exc is None:
+		if awaiting_input:
+			raise TypeError("attempt to advance generator without send()")
+		awaiting_input = True
+		yield x, send
+	return stop_exc.value
+
+
+def generator_dialogue(g, *, input=input):
+	for prompt, send in g:
+		send(input(prompt))
+
+
 def search_maxsatisfying(predicate, *, initial=0, _increasefunc=lambda n, base=_sys_maxsize+1: n*base):
 	"""Return the largest integer *n* for which predicate(n) succeeds
 

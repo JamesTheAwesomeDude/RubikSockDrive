@@ -4,7 +4,8 @@ from .macaulay import integer_to_varmultiset, varmultiset_to_integer
 from ._util import (
 	rank50 as _rank50, unrank50 as _unrank50,
 	rank_octetstring as _rank_octetstring, unrank_octetstring as _unrank_octetstring,
-	MixedBase as _MixedBase)
+	MixedBase as _MixedBase,
+	generator_dialogue as _generator_dialogue)
 
 from rubik.solve import Solver as _pglass_Solver
 
@@ -33,7 +34,7 @@ def data2bag(data):
 	return Multiset(map(Cube._from_int, representatives))
 
 
-def data2bag_wizard(data, *, input=input):
+def data2bag_wizard(data):
 	scrambles = data2bag(data)
 	k = len(scrambles)
 	for i, scramble in enumerate(scrambles):
@@ -48,27 +49,27 @@ def data2bag_wizard(data, *, input=input):
 		raise RuntimeError(f"verification failed: {scramble_check!r} != {scrambles!r}")
 
 
-def bag2data(bag, *, is_dec6=False):
-	i = _multiset_to_integer(bag, n=RUBIKS_BASE.order)
+def bag2data(bag, *, is_a50=False):
+	i = varmultiset_to_integer(bag, n=RUBIKS_BASE.order)
 	if is_dec6:
-		data = _uncrunch(i).rstrip().encode('ascii')
+		data = _unrank50(i)
 	else:
-		data = int.to_bytes(i, ..., 'big')
+		data = _unrank_octetstring(i)
 	return data
 
 
-def _cube_input_wizard(name="the cube", *, input=input):
+def _cube_input_wizard(name="the cube"):
 	input_edges = []
 	for fcolor1, fcolor2 in map(Cube._COLORS.__getitem__, Cube._CANON_SOLVED_STATE[0]):
-		ecolor1 = input(f"What color is the sticker on the edge piece ADJACENT TO the {fcolor1} center face of {name}, in the direction of the {fcolor2} center face?\n(Type a single lowercase letter, w or g or r or b or o or y.)\n> ")
-		ecolor2 = input(f"What color is the sticker on the edge piece ADJACENT TO the {fcolor2} center face of {name}, in the direction of the {fcolor1} center face?\n(Type a single lowercase letter, w or g or r or b or o or y.)\n> ")
+		ecolor1 = yield f"What color is the sticker on the edge piece ADJACENT TO the {fcolor1} center face of {name}, in the direction of the {fcolor2} center face?\n(Type a single lowercase letter, w or g or r or b or o or y.)\n> "
+		ecolor2 = yield f"What color is the sticker on the edge piece ADJACENT TO the {fcolor2} center face of {name}, in the direction of the {fcolor1} center face?\n(Type a single lowercase letter, w or g or r or b or o or y.)\n> "
 		input_edges.append(tuple(map(Cube._COLORS.index, [ecolor1, ecolor2])))
 
 	input_corners = []
 	for fcolor1, fcolor2, fcolor3 in map(Cube._COLORS.__getitem__, Cube._CANON_SOLVED_STATE[1]):
-		ccolor1 = input(f"Regarding the corner which is BETWEEN the {fcolor1}, {fcolor2}, and {fcolor3} center faces of {name}: What color is the sticker which is CLOSEST TO the {fcolor1} center face?\n(Type a single lowercase letter, w or g or r or b or o or y.)\n> ")
-		ccolor2 = input(f"Regarding the corner which is BETWEEN the {fcolor1}, {fcolor2}, and {fcolor3} center faces of {name}: What color is the sticker which is CLOSEST TO the {fcolor2} center face?\n(Type a single lowercase letter, w or g or r or b or o or y.)\n> ")
-		ccolor3 = input(f"Regarding the corner which is BETWEEN the {fcolor1}, {fcolor2}, and {fcolor3} center faces of {name}: What color is the sticker which is CLOSEST TO the {fcolor3} center face?\n(Type a single lowercase letter, w or g or r or b or o or y.)\n> ")
+		ccolor1 = yield f"Regarding the corner which is BETWEEN the {fcolor1}, {fcolor2}, and {fcolor3} center faces of {name}: What color is the sticker which is CLOSEST TO the {fcolor1} center face?\n(Type a single lowercase letter, w or g or r or b or o or y.)\n> "
+		ccolor2 = yield f"Regarding the corner which is BETWEEN the {fcolor1}, {fcolor2}, and {fcolor3} center faces of {name}: What color is the sticker which is CLOSEST TO the {fcolor2} center face?\n(Type a single lowercase letter, w or g or r or b or o or y.)\n> "
+		ccolor3 = yield f"Regarding the corner which is BETWEEN the {fcolor1}, {fcolor2}, and {fcolor3} center faces of {name}: What color is the sticker which is CLOSEST TO the {fcolor3} center face?\n(Type a single lowercase letter, w or g or r or b or o or y.)\n> "
 		input_corners.append(tuple(map(Cube._COLORS.index, [ccolor1, ccolor2, ccolor3])))
 
 	return Cube((input_edges, input_corners, Cube._CANON_SOLVED_STATE[2]))
@@ -79,7 +80,7 @@ def bag2data_wizard(*, input=input):
 	k = int(input("How many cubes do you have?\n> "))
 	bag = []
 	for i in range(k):
-		input_cube = _cube_input_wizard(name=f"Cube \x23{i+1}", input=input)
+		input_cube = (yield from _cube_input_wizard(name=f"Cube \x23{i+1}"))
 		bag.append(cube2i(input_cube))
 	return bag2data(bag, is_a50=is_a50)
 
