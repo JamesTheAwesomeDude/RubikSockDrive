@@ -2,7 +2,7 @@ from functools import reduce as _reduce, wraps as _wraps
 from itertools import repeat as _repeat, starmap as _starmap, chain as _chain, count as _count
 from collections.abc import Callable as _Callable, Mapping as _Mapping, Collection as _Collection, Iterable as _Iterable, Set as _Set, MutableSet as _MutableSet, ItemsView as _ItemsView, Sequence as _Sequence
 from collections import defaultdict as _defaultdict
-from math import isqrt as _isqrt
+from math import isqrt as _isqrt, prod as _prod
 from operator import add as _add, sub as _sub
 from sys import maxsize as _sys_maxsize
 import logging as _logging
@@ -69,7 +69,7 @@ def ez_generator_interface(g):
 
 
 def generator_dialogue(g, *, input=input):
-	for prompt, send in g:
+	for prompt, send in ez_generator_interface(g):
 		send(input(prompt))
 
 

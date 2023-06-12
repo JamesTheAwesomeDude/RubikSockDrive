@@ -9,7 +9,6 @@ from ._util import (
 
 from rubik.solve import Solver as _pglass_Solver
 
-from math import prod as _prod
 from itertools import count as _count
 import re
 import logging
@@ -60,16 +59,16 @@ def bag2data(bag, *, is_a50=False):
 
 def _cube_input_wizard(name="the cube"):
 	input_edges = []
-	for fcolor1, fcolor2 in map(Cube._COLORS.__getitem__, Cube._CANON_SOLVED_STATE[0]):
-		ecolor1 = yield f"What color is the sticker on the edge piece ADJACENT TO the {fcolor1} center face of {name}, in the direction of the {fcolor2} center face?\n(Type a single lowercase letter, w or g or r or b or o or y.)\n> "
-		ecolor2 = yield f"What color is the sticker on the edge piece ADJACENT TO the {fcolor2} center face of {name}, in the direction of the {fcolor1} center face?\n(Type a single lowercase letter, w or g or r or b or o or y.)\n> "
+	for fcolorprompt1, fcolorprompt2 in map(lambda edge: map(Cube._COLOR_NAMES.__getitem__, edge), Cube._CANON_SOLVED_STATE[0]):
+		ecolor1 = yield f"What color is the sticker on the edge piece ADJACENT TO the {fcolorprompt1} center face of {name}, in the direction of the {fcolorprompt2} center face?\n(Type a single lowercase letter, w or g or r or b or o or y.)\n> "
+		ecolor2 = yield f"What color is the sticker on the edge piece ADJACENT TO the {fcolorprompt2} center face of {name}, in the direction of the {fcolorprompt1} center face?\n(Type a single lowercase letter, w or g or r or b or o or y.)\n> "
 		input_edges.append(tuple(map(Cube._COLORS.index, [ecolor1, ecolor2])))
 
 	input_corners = []
-	for fcolor1, fcolor2, fcolor3 in map(Cube._COLORS.__getitem__, Cube._CANON_SOLVED_STATE[1]):
-		ccolor1 = yield f"Regarding the corner which is BETWEEN the {fcolor1}, {fcolor2}, and {fcolor3} center faces of {name}: What color is the sticker which is CLOSEST TO the {fcolor1} center face?\n(Type a single lowercase letter, w or g or r or b or o or y.)\n> "
-		ccolor2 = yield f"Regarding the corner which is BETWEEN the {fcolor1}, {fcolor2}, and {fcolor3} center faces of {name}: What color is the sticker which is CLOSEST TO the {fcolor2} center face?\n(Type a single lowercase letter, w or g or r or b or o or y.)\n> "
-		ccolor3 = yield f"Regarding the corner which is BETWEEN the {fcolor1}, {fcolor2}, and {fcolor3} center faces of {name}: What color is the sticker which is CLOSEST TO the {fcolor3} center face?\n(Type a single lowercase letter, w or g or r or b or o or y.)\n> "
+	for fcolorprompt1, fcolorprompt2, fcolorprompt3 in map(lambda corner: map(Cube._COLOR_NAMES.__getitem__, corner), Cube._CANON_SOLVED_STATE[1]):
+		ccolor1 = yield f"Regarding the corner which is BETWEEN the {fcolorprompt1}, {fcolorprompt2}, and {fcolorprompt3} center faces of {name}: What color is the sticker which is CLOSEST TO the {fcolorprompt1} center face?\n(Type a single lowercase letter, w or g or r or b or o or y.)\n> "
+		ccolor2 = yield f"Regarding the corner which is BETWEEN the {fcolorprompt1}, {fcolorprompt2}, and {fcolorprompt3} center faces of {name}: What color is the sticker which is CLOSEST TO the {fcolorprompt2} center face?\n(Type a single lowercase letter, w or g or r or b or o or y.)\n> "
+		ccolor3 = yield f"Regarding the corner which is BETWEEN the {fcolorprompt1}, {fcolorprompt2}, and {fcolorprompt3} center faces of {name}: What color is the sticker which is CLOSEST TO the {fcolorprompt3} center face?\n(Type a single lowercase letter, w or g or r or b or o or y.)\n> "
 		input_corners.append(tuple(map(Cube._COLORS.index, [ccolor1, ccolor2, ccolor3])))
 
 	return Cube((input_edges, input_corners, Cube._CANON_SOLVED_STATE[2]))
@@ -96,9 +95,10 @@ class Cube:
 	_CENTERS = ('U', 'L', 'F', 'R', 'B', 'D')  # These are official face abbreviations
 	_COLORS = ('w', 'g', 'r', 'b', 'o', 'y')
 	_CANON_SOLVED_STATE = (
-		((0, 1), (0, 2), (0, 3), (0, 4), (1, 4), (1, 2), (3, 2), (3, 4), (1, 5), (2, 5), (3, 5), (4, 5)),
+		((0, 1), (0, 2), (0, 3), (0, 4), (1, 4), (1, 2), (3, 2), (3, 4), (5, 1), (5, 2), (5, 3), (5, 4)),
 		((0, 1, 4), (0, 2, 1), (0, 3, 2), (0, 4, 3), (5, 4, 1), (5, 1, 2), (5, 2, 3), (5, 3, 4)),
 		((0,), (1,), (2,), (3,), (4,), (5,)))
+	_COLOR_NAMES = ('white', 'green', 'red', 'blue', 'orange', 'yellow')
 
 	def __repr__(self):
 		return f'{self.__class__.__name__}.fromsolverstring({self.solverstring!r})'
