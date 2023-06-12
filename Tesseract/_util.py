@@ -70,7 +70,7 @@ def ez_generator_interface(g):
 
 def generator_dialogue(g, *, input=input):
 	for prompt, send in ez_generator_interface(g):
-		send(input(prompt))
+		send(input(f"{prompt}\n> "))
 
 
 def search_maxsatisfying(predicate, *, initial=0, _increasefunc=lambda n, base=_sys_maxsize+1: n*base):

@@ -60,27 +60,29 @@ def bag2data(bag, *, is_a50=False):
 def _cube_input_wizard(name="the cube"):
 	input_edges = []
 	for fcolorprompt1, fcolorprompt2 in map(lambda edge: map(Cube._COLOR_NAMES.__getitem__, edge), Cube._CANON_SOLVED_STATE[0]):
-		ecolor1 = yield f"What color is the sticker on the edge piece ADJACENT TO the {fcolorprompt1} center face of {name}, in the direction of the {fcolorprompt2} center face?\n(Type a single lowercase letter, w or g or r or b or o or y.)\n> "
-		ecolor2 = yield f"What color is the sticker on the edge piece ADJACENT TO the {fcolorprompt2} center face of {name}, in the direction of the {fcolorprompt1} center face?\n(Type a single lowercase letter, w or g or r or b or o or y.)\n> "
+		ecolor1 = yield f"What color is the sticker on the edge piece ADJACENT TO the {fcolorprompt1} center face of {name}, in the direction of the {fcolorprompt2} center face?\n(Type a single lowercase letter, w or g or r or b or o or y.)"
+		ecolor2 = yield f"What color is the sticker on the edge piece ADJACENT TO the {fcolorprompt2} center face of {name}, in the direction of the {fcolorprompt1} center face?\n(Type a single lowercase letter, w or g or r or b or o or y.)"
 		input_edges.append(tuple(map(Cube._COLORS.index, [ecolor1, ecolor2])))
 
 	input_corners = []
 	for fcolorprompt1, fcolorprompt2, fcolorprompt3 in map(lambda corner: map(Cube._COLOR_NAMES.__getitem__, corner), Cube._CANON_SOLVED_STATE[1]):
-		ccolor1 = yield f"Regarding the corner which is BETWEEN the {fcolorprompt1}, {fcolorprompt2}, and {fcolorprompt3} center faces of {name}: What color is the sticker which is CLOSEST TO the {fcolorprompt1} center face?\n(Type a single lowercase letter, w or g or r or b or o or y.)\n> "
-		ccolor2 = yield f"Regarding the corner which is BETWEEN the {fcolorprompt1}, {fcolorprompt2}, and {fcolorprompt3} center faces of {name}: What color is the sticker which is CLOSEST TO the {fcolorprompt2} center face?\n(Type a single lowercase letter, w or g or r or b or o or y.)\n> "
-		ccolor3 = yield f"Regarding the corner which is BETWEEN the {fcolorprompt1}, {fcolorprompt2}, and {fcolorprompt3} center faces of {name}: What color is the sticker which is CLOSEST TO the {fcolorprompt3} center face?\n(Type a single lowercase letter, w or g or r or b or o or y.)\n> "
+		ccolor1 = yield f"Regarding the corner which is BETWEEN the {fcolorprompt1}, {fcolorprompt2}, and {fcolorprompt3} center faces of {name}: What color is the sticker which is CLOSEST TO the {fcolorprompt1} center face?\n(Type a single lowercase letter, w or g or r or b or o or y.)"
+		ccolor2 = yield f"Regarding the corner which is BETWEEN the {fcolorprompt1}, {fcolorprompt2}, and {fcolorprompt3} center faces of {name}: What color is the sticker which is CLOSEST TO the {fcolorprompt2} center face?\n(Type a single lowercase letter, w or g or r or b or o or y.)"
+		ccolor3 = yield f"Regarding the corner which is BETWEEN the {fcolorprompt1}, {fcolorprompt2}, and {fcolorprompt3} center faces of {name}: What color is the sticker which is CLOSEST TO the {fcolorprompt3} center face?\n(Type a single lowercase letter, w or g or r or b or o or y.)"
 		input_corners.append(tuple(map(Cube._COLORS.index, [ccolor1, ccolor2, ccolor3])))
 
 	return Cube((input_edges, input_corners, Cube._CANON_SOLVED_STATE[2]))
 
 
-def bag2data_wizard(*, input=input):
-	is_a50 = {'': False, '50': True}[input('Were you expecting a RADIX-50 TEXT message?\nIf so, type "50" (without the quotes) and press Enter. If not, just press Enter.\n> ')]
-	k = int(input("How many cubes do you have?\n> "))
+def bag2data_wizard():
+	k = yield "How many cubes do you have?"
+	k = int(k)
 	bag = []
 	for i in range(k):
 		input_cube = (yield from _cube_input_wizard(name=f"Cube \x23{i+1}"))
 		bag.append(cube2i(input_cube))
+	is_a50 = yield 'Were you expecting a RADIX-50 TEXT message?\nIf so, type "50" (without the quotes) and press Enter. If not, just press Enter.'
+	is_a50 = {'': False, '50': True}[is_a50]
 	return bag2data(bag, is_a50=is_a50)
 
 
