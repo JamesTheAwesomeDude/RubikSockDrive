@@ -438,6 +438,7 @@ class Multiset:
 # Bijection between integers and strings
 
 def string_rank(s, k, ord=ord):
+	"Given string *s* from underlying alphabet of size *k*, return a unique integer representative."
 	i = 0
 	offset = 0
 	for j, c in enumerate(map(ord, (s))):
@@ -446,10 +447,11 @@ def string_rank(s, k, ord=ord):
 		offset += k**j
 	return i + offset
 
-def _str_ish(chr):
+def _str_ish(chr=chr):
 	return lambda it: str().join(map(chr, it))
 
-def string_unrank(i, k, t=_str_ish(chr=chr)):
+def string_unrank(i, k, t=_str_ish()):
+	"Given unique integer representative *i* of a string from underlying alphabet of size *k*, return that string."
 	length, offset = fit_to_epoch(i, lambda l: k**l)
 	i -= offset
 	l = []
@@ -469,12 +471,11 @@ def rank50(s):
 	s = s.upper()
 	s = s.replace('\t', '\u001F')
 	s = s.replace('\n', '\u0017')
+	s = s.replace('\\', '\u001B')
 	return string_rank(s.upper(), len(A50), A50.index)
 
 def unrank50(i):
 	s = string_unrank(i, len(A50), _str_ish(chr=A50.__getitem__))
-	s = s.replace('\u0017', '\n')
-	s = s.replace('\u001F', '\t')
 	return s
 
 def rank_octetstring(s):
@@ -514,7 +515,7 @@ class MixedBase:
 	def __int__(self):
 		return self.to_int()
 	def from_int(self, i):
-		value = [...]
+		value = ...
 		for b in self.base:
 			i, digit = divmod(i, b)
 			value.append(digit)

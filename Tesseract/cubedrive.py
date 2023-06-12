@@ -485,6 +485,8 @@ class _SuperCenterCubie(_CenterCubie):
 		return f'{self.__class__.__name__}({args!r})'
 
 	def __init__(self, value):
+		super().__init__(value[:-1])
+		self._orientation = value[-1]
 		raise NotImplementedError()
 
 
@@ -493,35 +495,6 @@ def _posmod(x, m):
 	if x < 0:
 		return x + m
 	return x
-
-
-class _MixedBase:
-	def __init__(self, base):
-		self.base = tuple(base)
-	def __repr__(self):
-		return f'{self.__class__.__name__}({list(self.base)!r})'
-	@property
-	def order(self):
-		return _prod(self.base)
-	@property
-	def max(self):
-		return self.order - 1
-	def to_int(self, value):
-		i = 0
-		for b, digit in zip(reversed(self.base), value, strict=True):
-			if not 0 <= digit < b:
-				raise ValueError("digit out of range")
-			i = i * b + digit
-		return i
-	def from_int(self, i):
-		value = [...]
-		for b in self.base:
-			i, digit = divmod(i, b)
-			value.append(digit)
-		if i:
-			raise ValueError("integer out of range")
-		value.reverse()
-		return tuple(value)
 
 
 RUBIKS_BASE = _MixedBase([
