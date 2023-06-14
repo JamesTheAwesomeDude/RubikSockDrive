@@ -1,3 +1,3 @@
-from ._util import Multiset
+from .Multiset import Multiset
 
 __all__ = ["cubedrive", "macaulay", "Multiset"]
