@@ -357,7 +357,7 @@ class Multiset(MutableSet):
 
 	def __eq__(self, other):
 		if not isinstance(other, Multiset):
-			if not isinstance(other, Set):
+			if not isinstance(other, (Set, list)):
 				return NotImplemented
 			other = Multiset(other)
 		return not any(self.__symmetric_difference_items(other, delta=False))
@@ -365,7 +365,7 @@ class Multiset(MutableSet):
 
 	def __le__(self, other):
 		if not isinstance(other, Multiset):
-			if not isinstance(other, Set):
+			if not isinstance(other, (Set, list)):
 				return NotImplemented
 			other = Multiset(other)
 		return self.issubset(other)
@@ -373,7 +373,7 @@ class Multiset(MutableSet):
 
 	def __lt__(self, other):
 		if not isinstance(other, Multiset):
-			if not isinstance(other, Set):
+			if not isinstance(other, (Set, list)):
 				return NotImplemented
 			other = Multiset(other)
 		return self <= other and self != other
@@ -381,7 +381,7 @@ class Multiset(MutableSet):
 
 	def __ge__(self, other):
 		if not isinstance(other, Multiset):
-			if not isinstance(other, Set):
+			if not isinstance(other, (Set, list)):
 				return NotImplemented
 			other = Multiset(other)
 		return self.issuperset(other)
@@ -389,7 +389,7 @@ class Multiset(MutableSet):
 
 	def __gt__(self, other):
 		if not isinstance(other, Multiset):
-			if not isinstance(other, Set):
+			if not isinstance(other, (Set, list)):
 				return NotImplemented
 			other = Multiset(other)
 		return self >= other and self != other
@@ -397,7 +397,7 @@ class Multiset(MutableSet):
 
 	def __add__(self, other):
 		if not isinstance(other, Multiset):
-			if not isinstance(other, Set):
+			if not isinstance(other, (Set, list)):
 				return NotImplemented
 			other = Multiset(other)
 		result = self.copy()
@@ -407,7 +407,7 @@ class Multiset(MutableSet):
 
 	def __iadd__(self, other):
 		if not isinstance(other, Multiset):
-			if not isinstance(other, Set):
+			if not isinstance(other, (Set, list)):
 				return NotImplemented
 			other = Multiset(other)
 		self.extend(other)
@@ -416,7 +416,7 @@ class Multiset(MutableSet):
 
 	def __or__(self, other):
 		if not isinstance(other, Multiset):
-			if not isinstance(other, Set):
+			if not isinstance(other, (Set, list)):
 				return NotImplemented
 			other = Multiset(other)
 		return self.union(other)
@@ -424,7 +424,7 @@ class Multiset(MutableSet):
 
 	def __ior__(self, other):
 		if not isinstance(other, Multiset):
-			if not isinstance(other, Set):
+			if not isinstance(other, (Set, list)):
 				return NotImplemented
 			other = Multiset(other)
 		self.update(other)
@@ -433,7 +433,7 @@ class Multiset(MutableSet):
 
 	def __and__(self, other):
 		if not isinstance(other, Multiset):
-			if not isinstance(other, Set):
+			if not isinstance(other, (Set, list)):
 				return NotImplemented
 			other = Multiset(other)
 		return self.intersection(other)
@@ -441,7 +441,7 @@ class Multiset(MutableSet):
 
 	def __iand__(self, other):
 		if not isinstance(other, Multiset):
-			if not isinstance(other, Set):
+			if not isinstance(other, (Set, list)):
 				return NotImplemented
 			other = Multiset(other)
 		self.intersection_update(other)
@@ -450,7 +450,7 @@ class Multiset(MutableSet):
 
 	def __sub__(self, other):
 		if not isinstance(other, Multiset):
-			if not isinstance(other, Set):
+			if not isinstance(other, (Set, list)):
 				return NotImplemented
 			other = Multiset(other)
 		return self.difference(other)
@@ -458,7 +458,7 @@ class Multiset(MutableSet):
 
 	def __isub__(self, other):
 		if not isinstance(other, Multiset):
-			if not isinstance(other, Set):
+			if not isinstance(other, (Set, list)):
 				return NotImplemented
 			other = Multiset(other)
 		self.difference_update(other)
@@ -467,7 +467,7 @@ class Multiset(MutableSet):
 
 	def __xor__(self, other):
 		if not isinstance(other, Multiset):
-			if not isinstance(other, Set):
+			if not isinstance(other, (Set, list)):
 				return NotImplemented
 			other = Multiset(other)
 		return self.symmetric_difference(other)
@@ -475,7 +475,7 @@ class Multiset(MutableSet):
 
 	def __ixor__(self, other):
 		if not isinstance(other, Multiset):
-			if not isinstance(other, Set):
+			if not isinstance(other, (Set, list)):
 				return NotImplemented
 			other = Multiset(other)
 		self.symmetric_difference_update(other)
